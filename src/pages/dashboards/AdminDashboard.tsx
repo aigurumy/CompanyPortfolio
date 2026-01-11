@@ -188,7 +188,7 @@ const AdminDashboard = () => {
           <h2 className="text-xl font-semibold text-gray-800 mb-6">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-4">
             <button className="p-4 bg-gradient-to-r from-blue-200 to-blue-300 rounded-xl text-blue-700 font-medium hover:from-blue-300 hover:to-blue-400 transition-all shadow-sm hover:shadow-md">
-              Add Child
+              Enrollment
             </button>
             <button className="p-4 bg-gradient-to-r from-green-200 to-green-300 rounded-xl text-green-700 font-medium hover:from-green-300 hover:to-green-400 transition-all shadow-sm hover:shadow-md">
               Add Teacher
