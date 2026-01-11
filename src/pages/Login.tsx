@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogIn, AlertCircle, UserPlus, CheckCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { useLanguage } from '../contexts/LanguageContext';
+import { LogIn, AlertCircle, Baby, Heart } from 'lucide-react';
+import LanguageToggle from '../components/LanguageToggle';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [setupLoading, setSetupLoading] = useState(false);
-  const [setupSuccess, setSetupSuccess] = useState('');
   const { signIn, user, profile } = useAuth();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,154 +35,138 @@ const Login = () => {
     }
   };
 
-  const setupDemoAccounts = async () => {
-    setSetupLoading(true);
-    setError('');
-    setSetupSuccess('');
-
-    const demoUsers = [
-      { email: 'admin@childcare.com', password: 'admin123', full_name: 'Admin User', role: 'admin', phone: '+1-555-0001' },
-      { email: 'teacher@childcare.com', password: 'teacher123', full_name: 'Teacher User', role: 'teacher', phone: '+1-555-0002' },
-      { email: 'parent@childcare.com', password: 'parent123', full_name: 'Parent User', role: 'parent', phone: '+1-555-0003' }
-    ];
-
-    let successCount = 0;
-
-    try {
-      for (const user of demoUsers) {
-        const { data: authData, error: signUpError } = await supabase.auth.signUp({
-          email: user.email,
-          password: user.password,
-        });
-
-        if (signUpError) {
-          if (!signUpError.message.includes('already registered')) {
-            console.error(`Error creating ${user.email}:`, signUpError);
-          }
-          continue;
-        }
-
-        if (authData.user) {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert({
-              id: authData.user.id,
-              full_name: user.full_name,
-              role: user.role,
-              phone: user.phone
-            });
-
-          if (profileError && !profileError.message.includes('duplicate')) {
-            console.error(`Error creating profile for ${user.email}:`, profileError);
-            continue;
-          }
-
-          successCount++;
-        }
-      }
-
-      await supabase.auth.signOut();
-
-      if (successCount > 0) {
-        setSetupSuccess(`Successfully created ${successCount} demo account(s)! You can now login.`);
-        setEmail('admin@childcare.com');
-        setPassword('admin123');
-      } else {
-        setSetupSuccess('Demo accounts already exist! You can login now.');
-        setEmail('admin@childcare.com');
-        setPassword('admin123');
-      }
-    } catch (err) {
-      setError('Failed to create demo accounts. Please try again.');
-      console.error('Setup error:', err);
-    } finally {
-      setSetupLoading(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-slate-900 to-slate-800 flex items-center justify-center px-4">
-      <div className="max-w-md w-full">
-        <div className="bg-slate-800 rounded-lg shadow-xl p-8">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <LogIn className="w-8 h-8 text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-white via-[#F0F9FF] to-[#F0FDF4]">
+      <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md shadow-sm z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="bg-gradient-to-br from-[#B5EAD7] to-[#C7CEEA] p-2 rounded-xl">
+              <Baby className="w-6 h-6 text-gray-800" />
             </div>
-            <h2 className="text-3xl font-bold text-slate-100">Child-Care Portal</h2>
-            <p className="text-slate-400 mt-2">Sign in to your account</p>
+            <span className="text-2xl font-bold text-gray-800">Taska-Care</span>
+          </Link>
+          <LanguageToggle />
+        </div>
+      </nav>
+
+      <div className="pt-24 pb-12 px-4 min-h-screen flex items-center justify-center">
+        <div className="max-w-6xl w-full grid lg:grid-cols-2 gap-8">
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-10 shadow-xl border border-gray-100">
+            <div className="mb-8">
+              <div className="w-16 h-16 bg-gradient-to-br from-[#C7CEEA] to-blue-200 rounded-2xl flex items-center justify-center mb-4">
+                <LogIn className="w-8 h-8 text-gray-800" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900">{t('staffLogin')}</h2>
+              <p className="text-gray-600 mt-2">
+                {language === 'en' ? 'For Admin & Teacher access' : 'Untuk akses Pentadbir & Guru'}
+              </p>
+            </div>
+
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <span className="text-sm text-red-800">{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  {t('email')}
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#B5EAD7] focus:border-transparent text-gray-900 placeholder-gray-400 transition-all"
+                  placeholder="you@example.com"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  {t('password')}
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#B5EAD7] focus:border-transparent text-gray-900 placeholder-gray-400 transition-all"
+                  placeholder={language === 'en' ? 'Enter your password' : 'Masukkan kata laluan'}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-[#C7CEEA] to-blue-200 text-gray-800 font-semibold py-4 px-6 rounded-xl hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (language === 'en' ? 'Signing in...' : 'Mendaftar masuk...') : t('signIn')}
+              </button>
+            </form>
+
+            <div className="mt-6 p-4 bg-gray-50 rounded-xl">
+              <p className="text-xs text-gray-600 mb-2">
+                {language === 'en' ? 'Demo Accounts:' : 'Akaun Demo:'}
+              </p>
+              <div className="space-y-1 text-xs text-gray-700">
+                <p><span className="font-medium">Admin:</span> admin@childcare.com / admin123</p>
+                <p><span className="font-medium">Teacher:</span> teacher@childcare.com / teacher123</p>
+                <p><span className="font-medium">Parent:</span> parent@childcare.com / parent123</p>
+              </div>
+            </div>
           </div>
 
-          {error && (
-            <div className="mb-6 p-4 bg-red-900/20 border border-red-500/50 rounded-lg flex items-center space-x-2 text-red-400">
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              <span className="text-sm">{error}</span>
-            </div>
-          )}
-
-          {setupSuccess && (
-            <div className="mb-6 p-4 bg-green-900/20 border border-green-500/50 rounded-lg flex items-center space-x-2 text-green-400">
-              <CheckCircle className="w-5 h-5 flex-shrink-0" />
-              <span className="text-sm">{setupSuccess}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
-                Email Address
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-100 placeholder-slate-400"
-                placeholder="you@example.com"
-              />
+          <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-3xl p-10 shadow-xl border border-pink-100 flex flex-col justify-center">
+            <div className="mb-8">
+              <div className="w-16 h-16 bg-gradient-to-br from-pink-200 to-rose-200 rounded-2xl flex items-center justify-center mb-4">
+                <Heart className="w-8 h-8 text-gray-800" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900">{t('newParent')}</h2>
+              <p className="text-gray-600 mt-2 mb-8">
+                {language === 'en'
+                  ? 'Register your child and join our caring community'
+                  : 'Daftarkan anak anda dan sertai komuniti penjagaan kami'}
+              </p>
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-100 placeholder-slate-400"
-                placeholder="Enter your password"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium py-3 px-6 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            <Link
+              to="/register"
+              className="w-full bg-gradient-to-r from-pink-200 to-rose-200 text-gray-800 font-semibold py-4 px-6 rounded-xl hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 text-center"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
-          </form>
+              {t('registerNewStudent')}
+            </Link>
 
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={setupDemoAccounts}
-              disabled={setupLoading}
-              className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white font-medium py-3 px-6 rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-            >
-              <UserPlus className="w-5 h-5" />
-              <span>{setupLoading ? 'Creating demo accounts...' : 'Setup Demo Accounts'}</span>
-            </button>
-          </div>
-
-          <div className="mt-6 text-center text-slate-400 text-sm">
-            <p>Demo Accounts:</p>
-            <p className="mt-2">Admin: admin@childcare.com / admin123</p>
-            <p>Teacher: teacher@childcare.com / teacher123</p>
-            <p>Parent: parent@childcare.com / parent123</p>
+            <div className="mt-8 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-2 h-2 rounded-full bg-pink-400 mt-2 flex-shrink-0" />
+                <p className="text-gray-700">
+                  {language === 'en'
+                    ? 'Real-time updates on your child\'s daily activities'
+                    : 'Kemas kini masa nyata mengenai aktiviti harian anak anda'}
+                </p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-2 h-2 rounded-full bg-pink-400 mt-2 flex-shrink-0" />
+                <p className="text-gray-700">
+                  {language === 'en'
+                    ? 'Photo updates and progress reports'
+                    : 'Kemas kini foto dan laporan kemajuan'}
+                </p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-2 h-2 rounded-full bg-pink-400 mt-2 flex-shrink-0" />
+                <p className="text-gray-700">
+                  {language === 'en'
+                    ? 'Direct communication with teachers and admin'
+                    : 'Komunikasi terus dengan guru dan pentadbir'}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
