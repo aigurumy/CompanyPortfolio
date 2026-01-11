@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogIn, AlertCircle } from 'lucide-react';
+import { LogIn, AlertCircle, UserPlus, CheckCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [setupLoading, setSetupLoading] = useState(false);
+  const [setupSuccess, setSetupSuccess] = useState('');
   const { signIn } = useAuth();
   const navigate = useNavigate();
 
@@ -23,6 +26,71 @@ const Login = () => {
       setLoading(false);
     } else {
       navigate('/dashboard');
+    }
+  };
+
+  const setupDemoAccounts = async () => {
+    setSetupLoading(true);
+    setError('');
+    setSetupSuccess('');
+
+    const demoUsers = [
+      { email: 'admin@childcare.com', password: 'admin123', full_name: 'Admin User', role: 'admin', phone: '+1-555-0001' },
+      { email: 'teacher@childcare.com', password: 'teacher123', full_name: 'Teacher User', role: 'teacher', phone: '+1-555-0002' },
+      { email: 'parent@childcare.com', password: 'parent123', full_name: 'Parent User', role: 'parent', phone: '+1-555-0003' }
+    ];
+
+    let successCount = 0;
+
+    try {
+      for (const user of demoUsers) {
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
+          email: user.email,
+          password: user.password,
+        });
+
+        if (signUpError) {
+          if (!signUpError.message.includes('already registered')) {
+            console.error(`Error creating ${user.email}:`, signUpError);
+          }
+          continue;
+        }
+
+        if (authData.user) {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: authData.user.id,
+              full_name: user.full_name,
+              role: user.role,
+              phone: user.phone
+            });
+
+          if (profileError && !profileError.message.includes('duplicate')) {
+            console.error(`Error creating profile for ${user.email}:`, profileError);
+            continue;
+          }
+
+          successCount++;
+        }
+      }
+
+      await supabase.auth.signOut();
+
+      if (successCount > 0) {
+        setSetupSuccess(`Successfully created ${successCount} demo account(s)! You can now login.`);
+        setEmail('admin@childcare.com');
+        setPassword('admin123');
+      } else {
+        setSetupSuccess('Demo accounts already exist! You can login now.');
+        setEmail('admin@childcare.com');
+        setPassword('admin123');
+      }
+    } catch (err) {
+      setError('Failed to create demo accounts. Please try again.');
+      console.error('Setup error:', err);
+    } finally {
+      setSetupLoading(false);
     }
   };
 
@@ -42,6 +110,13 @@ const Login = () => {
             <div className="mb-6 p-4 bg-red-900/20 border border-red-500/50 rounded-lg flex items-center space-x-2 text-red-400">
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
               <span className="text-sm">{error}</span>
+            </div>
+          )}
+
+          {setupSuccess && (
+            <div className="mb-6 p-4 bg-green-900/20 border border-green-500/50 rounded-lg flex items-center space-x-2 text-green-400">
+              <CheckCircle className="w-5 h-5 flex-shrink-0" />
+              <span className="text-sm">{setupSuccess}</span>
             </div>
           )}
 
@@ -84,6 +159,18 @@ const Login = () => {
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
+
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={setupDemoAccounts}
+              disabled={setupLoading}
+              className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white font-medium py-3 px-6 rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            >
+              <UserPlus className="w-5 h-5" />
+              <span>{setupLoading ? 'Creating demo accounts...' : 'Setup Demo Accounts'}</span>
+            </button>
+          </div>
 
           <div className="mt-6 text-center text-slate-400 text-sm">
             <p>Demo Accounts:</p>
