@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Demo Users - Child-Care System</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+        .container {
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #60a5fa;
+            margin-bottom: 20px;
+        }
+        button {
+            background: linear-gradient(to right, #3b82f6, #2563eb);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            margin-top: 20px;
+        }
+        button:hover {
+            background: linear-gradient(to right, #2563eb, #1d4ed8);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            background: #334155;
+        }
+        .success {
+            background: #064e3b;
+            color: #6ee7b7;
+        }
+        .error {
+            background: #7f1d1d;
+            color: #fca5a5;
+        }
+        .info {
+            background: #1e3a8a;
+            color: #93c5fd;
+        }
+        .user-list {
+            margin-top: 20px;
+        }
+        .user-item {
+            padding: 10px;
+            background: #334155;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        .code {
+            background: #0f172a;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Create Demo Users</h1>
+        <p>This utility will create three demo user accounts for testing the Child-Care Management System.</p>
+
+        <div class="user-list">
+            <h3>Users to be created:</h3>
+            <div class="user-item">
+                <strong>Admin:</strong> <span class="code">admin@childcare.com</span> / <span class="code">admin123</span>
+            </div>
+            <div class="user-item">
+                <strong>Teacher:</strong> <span class="code">teacher@childcare.com</span> / <span class="code">teacher123</span>
+            </div>
+            <div class="user-item">
+                <strong>Parent:</strong> <span class="code">parent@childcare.com</span> / <span class="code">parent123</span>
+            </div>
+        </div>
+
+        <button id="createBtn" onclick="createDemoUsers()">Create Demo Users</button>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://xmsquhvbudnplvishuqr.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhtc3F1aHZidWRucGx2aXNodXFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDE5MDQsImV4cCI6MjA4MzcxNzkwNH0.zHYf8KKxyPKEPXCV5C4Gsb-kYzwZTQJI6VatUUsd7UQ';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const demoUsers = [
+            { email: 'admin@childcare.com', password: 'admin123', full_name: 'Admin User', role: 'admin', phone: '+1-555-0001' },
+            { email: 'teacher@childcare.com', password: 'teacher123', full_name: 'Teacher User', role: 'teacher', phone: '+1-555-0002' },
+            { email: 'parent@childcare.com', password: 'parent123', full_name: 'Parent User', role: 'parent', phone: '+1-555-0003' }
+        ];
+
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = message;
+        }
+
+        async function createDemoUsers() {
+            const btn = document.getElementById('createBtn');
+            btn.disabled = true;
+
+            showStatus('Creating demo users... Please wait.', 'info');
+
+            let successCount = 0;
+            let errors = [];
+
+            for (const user of demoUsers) {
+                try {
+                    showStatus(`Creating ${user.role}: ${user.email}...`, 'info');
+
+                    // Sign up the user
+                    const { data: authData, error: signUpError } = await supabase.auth.signUp({
+                        email: user.email,
+                        password: user.password,
+                        options: {
+                            data: {
+                                full_name: user.full_name
+                            }
+                        }
+                    });
+
+                    if (signUpError) {
+                        // Check if user already exists
+                        if (signUpError.message.includes('already registered')) {
+                            errors.push(`${user.email} already exists - skipping`);
+                            continue;
+                        }
+                        throw signUpError;
+                    }
+
+                    if (authData.user) {
+                        // Create profile
+                        const { error: profileError } = await supabase
+                            .from('profiles')
+                            .insert({
+                                id: authData.user.id,
+                                full_name: user.full_name,
+                                role: user.role,
+                                phone: user.phone
+                            });
+
+                        if (profileError) {
+                            // If profile already exists, that's okay
+                            if (!profileError.message.includes('duplicate')) {
+                                throw profileError;
+                            }
+                        }
+
+                        successCount++;
+                    }
+
+                    // Small delay between requests
+                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                } catch (error) {
+                    console.error(`Error creating ${user.email}:`, error);
+                    errors.push(`${user.email}: ${error.message}`);
+                }
+            }
+
+            // Sign out after creating users
+            await supabase.auth.signOut();
+
+            // Show final status
+            let message = `<h3>Setup Complete!</h3>`;
+            message += `<p>Successfully created ${successCount} user(s).</p>`;
+
+            if (errors.length > 0) {
+                message += `<h4>Notes:</h4><ul>`;
+                errors.forEach(err => {
+                    message += `<li>${err}</li>`;
+                });
+                message += `</ul>`;
+            }
+
+            message += `<p style="margin-top: 20px;"><strong>You can now close this page and login with:</strong></p>`;
+            message += `<ul>`;
+            message += `<li><span class="code">admin@childcare.com</span> / <span class="code">admin123</span></li>`;
+            message += `<li><span class="code">teacher@childcare.com</span> / <span class="code">teacher123</span></li>`;
+            message += `<li><span class="code">parent@childcare.com</span> / <span class="code">parent123</span></li>`;
+            message += `</ul>`;
+
+            showStatus(message, successCount > 0 ? 'success' : 'error');
+            btn.disabled = false;
+        }
+    </script>
+</body>
+</html>
