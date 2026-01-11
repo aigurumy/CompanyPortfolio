@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogIn, AlertCircle, UserPlus, CheckCircle } from 'lucide-react';
@@ -11,8 +11,14 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
   const [setupSuccess, setSetupSuccess] = useState('');
-  const { signIn } = useAuth();
+  const { signIn, user, profile } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user && profile) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, profile, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
