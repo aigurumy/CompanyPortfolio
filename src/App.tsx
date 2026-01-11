@@ -8,7 +8,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="min-h-screen bg-slate-900 text-slate-100">
+        <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 text-gray-800">
           <DashboardNav />
           <Routes>
             <Route path="/dashboard/*" element={<Dashboard />} />
